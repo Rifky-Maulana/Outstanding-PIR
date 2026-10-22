@@ -144,8 +144,30 @@ KONTEKS.md                 Catatan investigasi dan keputusan bisnis
 
 ## Maintenance daftar scrap
 
-Perubahan `prdp_nextprocess` tidak dilakukan oleh aplikasi web. Tool terpisah
-tersedia untuk tim IT/DBA di `scripts/update-scrap-nextprocess.js`.
+Perubahan `prdp_nextprocess` tidak dilakukan oleh aplikasi web. Untuk daftar
+stock take 22 Oktober 2026, file siap pakai tersedia di
+`sql/update-scrap-702.sql`. Buka melalui SSMS menggunakan akun IT/DBA.
+
+File SQL secara default memakai `@commit = 0`. Mode ini hanya menampilkan
+preview dan tidak menjalankan `UPDATE`. Hasil wajib menunjukkan:
+
+- daftar: 702
+- direct mapping: 696
+- output-only: 6
+- target update: 701
+
+Simpan result set `rollback_sql` ke file sebelum eksekusi. Setelah seluruh
+hasil diperiksa, IT mengubah `@commit = 1` dan menjalankan ulang script. Hanya
+bagian `UPDATE` yang dibungkus transaction agar tidak menahan lock selama
+proses preview.
+
+Untuk daftar lain, SQL dapat dibuat ulang dengan:
+
+```bash
+node scripts/generate-scrap-sql.js daftar.txt sql/update-scrap.sql
+```
+
+Alternatif melalui Node.js tersedia di `scripts/update-scrap-nextprocess.js`.
 
 Simpan daftar nomor coil satu per baris sebagai `scrap-coils.txt`, lalu jalankan
 preview menggunakan akun database read-only:
