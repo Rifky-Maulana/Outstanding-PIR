@@ -807,7 +807,7 @@ SELECT
     (SELECT COUNT(*) FROM #langsung) AS direct_mapping,
     (SELECT COUNT(*) FROM #sumber) AS output_only,
     (SELECT COUNT(*) FROM #target) AS target_update,
-    CASE WHEN @commit = 1 THEN 'COMMIT' ELSE 'PREVIEW / ROLLBACK' END AS mode;
+    CASE WHEN @commit = 1 THEN 'COMMIT' ELSE 'PREVIEW / NO UPDATE' END AS mode;
 
 /* HASIL 2: enam output-only yang memakai lima baris induk. */
 SELECT * FROM #mapping WHERE mapping_type = 'source_parent' ORDER BY coil_daftar;
