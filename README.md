@@ -142,6 +142,39 @@ KONTEKS.md                 Catatan investigasi dan keputusan bisnis
 | Named instance tidak ditemukan | Service SQL Server Browser belum berjalan |
 | Query ditolak pada mode default | Akun belum memiliki izin membuat tabel temporer; gunakan `DB_MODE=murni` |
 
+## Maintenance daftar scrap
+
+Perubahan `prdp_nextprocess` tidak dilakukan oleh aplikasi web. Tool terpisah
+tersedia untuk tim IT/DBA di `scripts/update-scrap-nextprocess.js`.
+
+Simpan daftar nomor coil satu per baris sebagai `scrap-coils.txt`, lalu jalankan
+preview menggunakan akun database read-only:
+
+```bash
+node scripts/update-scrap-nextprocess.js scrap-coils.txt
+```
+
+Preview memetakan setiap coil ke transaksi terakhir. Coil output yang belum
+memiliki baris sendiri akan dipetakan ke baris operasi induknya. Tidak ada data
+yang berubah pada mode preview.
+
+Setelah hasil diperiksa, IT/DBA dapat memakai akun yang memiliki izin `UPDATE`
+dan menjalankan:
+
+```bash
+node scripts/update-scrap-nextprocess.js scrap-coils.txt --commit
+```
+
+Mode commit menggunakan transaksi, memvalidasi jumlah target, dan menyimpan
+backup JSON lokal dalam folder `backups`. Rollback dijalankan dengan:
+
+```bash
+node scripts/rollback-scrap-nextprocess.js backups/nama-backup.json
+```
+
+Jangan memberikan izin write kepada akun aplikasi web. Gunakan kredensial
+maintenance sementara milik IT/DBA, lalu kembalikan `.env` ke akun read-only.
+
 ## Batasan data
 
 - Hanya data dengan `prdp_type = 'Prime'` yang disertakan.

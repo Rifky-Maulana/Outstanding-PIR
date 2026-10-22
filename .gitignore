@@ -4,6 +4,7 @@ node_modules/
 !.env.example
 npm-debug.log*
 *.log
+backups/
+scrap-coils.txt
 .DS_Store
 Thumbs.db
-
