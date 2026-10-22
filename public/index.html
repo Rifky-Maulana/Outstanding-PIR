@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outstanding PIR — stock take coil WIP</title>
+<style>
+  :root {
+    --page: #e9edf1;
+    --surface: #ffffff;
+    --ink: #1b2027;
+    --muted: #626d7a;
+    --line: #ccd4dc;
+    --total: #1f5285;
+    --tonase: #2c6b57;
+    --potong: #97481b;
+    --potong-bg: #f6e9df;
+    --danger: #9b2c2c;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font: 15px/1.5 "Segoe UI", system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    padding: 18px 24px 0;
+  }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 2px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+  .tally { display: flex; gap: 10px; flex-wrap: wrap; }
+  .card {
+    border: 1px solid var(--line);
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    padding: 10px 16px 12px;
+    background: var(--surface);
+    min-width: 150px;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+  }
+  /* Hanya kartu yang bisa dipakai memfilter yang tampak bisa diklik. */
+  .card.pilih { cursor: pointer; }
+  .card.pilih[aria-pressed="true"] { border-color: var(--ink); border-width: 1px 1px 3px; }
+  .card .n { font-size: 24px; font-weight: 600; display: block; line-height: 1.2; }
+  .card .k { font-size: 12.5px; color: var(--muted); }
+  .card.k-total .n { color: var(--total); }
+  .card.k-tonase .n { color: var(--tonase); }
+  .card.k-potong .n { color: var(--potong); }
+  .bar {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    padding: 12px 24px; background: var(--surface);
+    border-bottom: 1px solid var(--line);
+  }
+  input[type=search] {
+    flex: 1 1 260px; min-width: 200px; padding: 7px 11px;
+    border: 1px solid var(--line); border-radius: 5px; font: inherit; background: #fbfcfd;
+  }
+  input[type=search]:focus, button:focus-visible { outline: 2px solid var(--total); outline-offset: 1px; }
+  button.act {
+    padding: 7px 14px; border: 1px solid var(--line); border-radius: 5px;
+    background: var(--surface); font: inherit; cursor: pointer;
+  }
+  button.act:hover { background: #f2f5f8; }
+  main { flex: 1; min-height: 0; padding: 0 24px; }
+  .wrap {
+    height: 100%;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-top: none;
+    overflow: auto;
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th {
+    position: sticky; top: 0; background: #f4f6f9; text-align: left;
+    padding: 9px 12px; border-bottom: 1px solid var(--line);
+    font-weight: 600; white-space: nowrap; font-size: 12.5px;
+    z-index: 1;
+  }
+  .filter-btn {
+    margin-left: 5px; padding: 0 3px; border: 0; border-radius: 3px;
+    background: transparent; color: #65717e; cursor: pointer; font-size: 10px;
+  }
+  .filter-btn:hover, .filter-btn.aktif { background: #dce6f0; color: var(--total); }
+  .filter-menu {
+    position: fixed; z-index: 20; width: 280px; padding: 10px;
+    background: var(--surface); border: 1px solid #8995a3; border-radius: 5px;
+    box-shadow: 0 8px 24px rgba(20, 31, 43, .22); font-size: 13px;
+  }
+  .filter-menu[hidden] { display: none; }
+  .filter-menu input[type=search] { width: 100%; min-width: 0; margin-bottom: 8px; }
+  .filter-list {
+    max-height: 260px; overflow: auto; border: 1px solid var(--line);
+    padding: 4px 7px; background: #fff;
+  }
+  .filter-list label { display: block; padding: 2px 0; white-space: nowrap; }
+  .filter-list label:hover { background: #f0f4f8; }
+  .filter-list input { margin: 0 6px 0 0; vertical-align: -1px; }
+  .filter-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 9px; }
+  .filter-actions button { padding: 5px 11px; }
+  td { padding: 7px 12px; border-bottom: 1px solid #eef1f4; white-space: nowrap; }
+  tbody tr:hover td { background: #f7f9fb; }
+  .coil { font-family: "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .tag {
+    display: inline-block; padding: 1px 8px; border-radius: 10px;
+    font-size: 11.5px; font-weight: 600;
+  }
+  .tag.potong { background: var(--potong-bg); color: var(--potong); }
+  /* Nilai yang memang kosong di database, bukan gagal ambil. */
+  .kosong { color: #a6afb9; }
+  .note { padding: 40px 24px; text-align: center; color: var(--muted); }
+  .err {
+    margin: 24px; padding: 14px 16px; background: #fbecec;
+    border: 1px solid #e6c3c3; border-radius: 6px; color: var(--danger);
+  }
+  .err b { display: block; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Outstanding PIR</h1>
+  <p class="sub" id="meta">Menyambung ke database…</p>
+  <div class="tally">
+    <div class="card k-total">
+      <span class="n" id="c-total">—</span>
+      <span class="k">Coil WIP</span>
+    </div>
+    <div class="card k-tonase">
+      <span class="n" id="c-tonase">—</span>
+      <span class="k">Total tonase</span>
+    </div>
+    <button class="card k-potong pilih" data-f="potong" aria-pressed="false">
+      <span class="n" id="c-potong">—</span>
+      <span class="k">Hasil potong</span>
+    </button>
+  </div>
+</header>
+
+<div class="bar">
+  <input type="search" id="cari" placeholder="Cari nomor coil, customer, grade, lokasi, next process…">
+  <button class="act" id="reset">Tampilkan semua</button>
+  <button class="act" id="excel">Unduh Excel</button>
+  <button class="act" id="refresh">Ambil ulang dari database</button>
+</div>
+
+<main>
+  <div class="wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Coil</th><th>Mother</th><th>Customer</th><th>Grade</th><th>Temper</th>
+          <th class="num">Tebal</th><th class="num">Lebar</th><th class="num">Berat</th>
+          <th>Line</th><th>Next process</th><th>Lokasi</th><th>Asal</th><th>Waktu</th>
+        </tr>
+      </thead>
+      <tbody id="isi">
+        <tr><td colspan="13" class="note">Memuat data…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<div class="filter-menu" id="filter-menu" hidden></div>
+
+<script src="/vendor/exceljs.min.js"></script>
+<script>
+const KOLOM = 13;
+const FILTER_KOLOM = [
+  'coil', 'mother', 'customer', 'grade', 'temper', 'tebal', 'lebar',
+  'berat', 'line_skrg', 'next_process', 'lokasi', 'asal', 'waktu',
+];
+
+let semua = [];
+let filter = null;
+let filterKolom = {};
+
+const el = (id) => document.getElementById(id);
+const tanggal = (v) => (v ? String(v).slice(0, 16).replace('T', ' ') : '');
+const aman = (s) =>
+  String(s ?? '').replace(/[&<>"]/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// Kosong ditandai "—" abu-abu, bukan sel kosong: supaya jelas datanya memang
+// tidak ada di database, bukan gagal diambil.
+const angka = (v, d = 2) =>
+  v === null || v === undefined || v === ''
+    ? '<span class="kosong">—</span>'
+    : Number(v).toLocaleString('id-ID', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+const teks = (v) =>
+  v === null || v === undefined || v === ''
+    ? '<span class="kosong">—</span>'
+    : aman(v);
+
+function nilaiKolom(row, key) {
+  if (key === 'asal') return row.hasil_potong === 1 ? 'Potongan' : '';
+  if (key === 'waktu') return tanggal(row.waktu);
+  return row[key] ?? '';
+}
+
+function perbaruiTombolFilter() {
+  document.querySelectorAll('.filter-btn').forEach((button) => {
+    button.classList.toggle('aktif', Boolean(filterKolom[button.dataset.key]));
+  });
+}
+
+function tutupFilter() {
+  el('filter-menu').hidden = true;
+}
+
+function bukaFilter(button) {
+  const key = button.dataset.key;
+  const menu = el('filter-menu');
+  const nilai = [...new Set(semua.map((row) => String(nilaiKolom(row, key))))]
+    .sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
+  const aktif = filterKolom[key];
+  const tercentang = new Set(aktif || nilai);
+
+  menu.innerHTML = `
+    <input type="search" class="filter-search" placeholder="Cari nilai…">
+    <div class="filter-list">
+      <label><input type="checkbox" class="filter-semua"> <b>(Pilih Semua)</b></label>
+      ${nilai.map((value, index) => `
+        <label data-label="${aman(value).toLowerCase()}">
+          <input type="checkbox" class="filter-nilai" data-index="${index}"
+                 ${tercentang.has(value) ? 'checked' : ''}>
+          ${value === '' ? '<span class="kosong">(Kosong)</span>' : aman(value)}
+        </label>`).join('')}
+    </div>
+    <div class="filter-actions">
+      <button type="button" class="act filter-batal">Batal</button>
+      <button type="button" class="act filter-ok">Terapkan</button>
+    </div>`;
+  menu.hidden = false;
+
+  const semuaBox = menu.querySelector('.filter-semua');
+  const boxes = [...menu.querySelectorAll('.filter-nilai')];
+  const sinkronkanSemua = () => {
+    const dipilih = boxes.filter((box) => box.checked).length;
+    semuaBox.checked = dipilih === boxes.length;
+    semuaBox.indeterminate = dipilih > 0 && dipilih < boxes.length;
+  };
+  sinkronkanSemua();
+
+  semuaBox.addEventListener('change', () => {
+    boxes.forEach((box) => { box.checked = semuaBox.checked; });
+    sinkronkanSemua();
+  });
+  boxes.forEach((box) => box.addEventListener('change', sinkronkanSemua));
+  menu.querySelector('.filter-search').addEventListener('input', (event) => {
+    const cari = event.target.value.trim().toLowerCase();
+    menu.querySelectorAll('.filter-list label[data-label]').forEach((label) => {
+      label.hidden = !label.dataset.label.includes(cari);
+    });
+  });
+  menu.querySelector('.filter-batal').addEventListener('click', tutupFilter);
+  menu.querySelector('.filter-ok').addEventListener('click', () => {
+    const dipilih = new Set(boxes
+      .filter((box) => box.checked)
+      .map((box) => nilai[Number(box.dataset.index)]));
+    if (dipilih.size === nilai.length) delete filterKolom[key];
+    else filterKolom[key] = dipilih;
+    perbaruiTombolFilter();
+    tutupFilter();
+    gambar();
+  });
+
+  const rect = button.getBoundingClientRect();
+  const kiri = Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8);
+  const ruangBawah = window.innerHeight - rect.bottom;
+  const atas = ruangBawah >= menu.offsetHeight + 8
+    ? rect.bottom + 4
+    : Math.max(8, rect.top - menu.offsetHeight - 4);
+  menu.style.left = `${Math.max(8, kiri)}px`;
+  menu.style.top = `${atas}px`;
+  menu.querySelector('.filter-search').focus();
+}
+
+function siapkanFilterKolom() {
+  document.querySelectorAll('thead th').forEach((th, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'filter-btn';
+    button.dataset.key = FILTER_KOLOM[index];
+    button.title = `Filter ${th.textContent.trim()}`;
+    button.setAttribute('aria-label', button.title);
+    button.textContent = '▼';
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      bukaFilter(button);
+    });
+    th.appendChild(button);
+  });
+}
+
+async function muat(refresh) {
+  el('isi').innerHTML = `<tr><td colspan="${KOLOM}" class="note">Menjalankan query, mohon tunggu…</td></tr>`;
+  try {
+    const r = await fetch('/api/coils' + (refresh ? '?refresh=1' : ''));
+    const j = await r.json();
+    if (!j.ok) return gagal(j.error);
+    semua = j.rows || [];
+    gambar();
+  } catch (e) {
+    gagal(e.message);
+  }
+}
+
+async function info() {
+  try {
+    const j = await (await fetch('/api/info')).json();
+    if (!j.ok) return;
+    const i = j.info;
+    el('meta').textContent =
+      `${i.server_aktif} · ${i.database_aktif} · ${Number(i.total_operasi).toLocaleString('id-ID')} operasi · ` +
+      `data ${tanggal(i.data_dari)} sampai ${tanggal(i.data_sampai)}`;
+  } catch (e) { /* biarkan teks awal */ }
+}
+
+function gagal(pesan) {
+  document.querySelector('main').innerHTML =
+    '<div class="err"><b>Query tidak bisa dijalankan</b>' + aman(pesan) + '</div>';
+}
+
+function hitung(baris) {
+  const kg = baris.reduce((a, r) => a + (Number(r.berat) || 0), 0);
+  const potong = baris.filter((r) => r.hasil_potong === 1).length;
+  const tanpaBerat = baris.filter((r) => r.berat === null || r.berat === undefined).length;
+
+  el('c-total').textContent = baris.length.toLocaleString('id-ID');
+  el('c-tonase').textContent =
+    (kg / 1000).toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' t';
+  el('c-potong').textContent = potong.toLocaleString('id-ID');
+
+  // Tonase tidak lengkap kalau ada coil tanpa berat — katakan, jangan diam.
+  el('c-tonase').nextElementSibling.textContent =
+    tanpaBerat ? `Total tonase · ${tanpaBerat} coil tanpa berat` : 'Total tonase';
+}
+
+function terpilih() {
+  const q = el('cari').value.trim().toLowerCase();
+  return semua.filter((r) => {
+    if (filter === 'potong' && r.hasil_potong !== 1) return false;
+    if (Object.entries(filterKolom).some(([key, nilai]) =>
+      !nilai.has(String(nilaiKolom(r, key))))) return false;
+    if (!q) return true;
+    return [r.coil, r.customer, r.grade, r.temper, r.lokasi, r.next_process, r.mother]
+      .some((v) => String(v ?? '').toLowerCase().includes(q));
+  });
+}
+
+function gambar() {
+  const baris = terpilih();
+  hitung(baris);
+  if (!baris.length) {
+    el('isi').innerHTML =
+      `<tr><td colspan="${KOLOM}" class="note">Tidak ada coil yang cocok. Coba ubah kata kunci atau tampilkan semua.</td></tr>`;
+    return;
+  }
+  const potong = baris.slice(0, 2000);
+  el('isi').innerHTML = potong.map((r) => `
+    <tr>
+      <td class="coil">${aman(r.coil)}</td>
+      <td class="coil">${teks(r.mother)}</td>
+      <td>${teks(r.customer)}</td>
+      <td>${teks(r.grade)}</td>
+      <td>${teks(r.temper)}</td>
+      <td class="num">${angka(r.tebal, 3)}</td>
+      <td class="num">${angka(r.lebar, 1)}</td>
+      <td class="num">${angka(r.berat, 0)}</td>
+      <td>${teks(r.line_skrg)}</td>
+      <td>${teks(r.next_process)}</td>
+      <td>${teks(r.lokasi)}</td>
+      <td>${r.hasil_potong === 1 ? '<span class="tag potong">potongan</span>' : ''}</td>
+      <td>${tanggal(r.waktu)}</td>
+    </tr>`).join('') +
+    (baris.length > potong.length
+      ? `<tr><td colspan="${KOLOM}" class="note">Menampilkan 2.000 dari ${baris.length.toLocaleString('id-ID')} baris. Persempit pencarian, atau unduh Excel untuk data lengkap.</td></tr>`
+      : '');
+}
+
+el('cari').addEventListener('input', gambar);
+
+document.querySelectorAll('.card.pilih').forEach((b) => {
+  b.addEventListener('click', () => {
+    filter = filter === b.dataset.f ? null : b.dataset.f;
+    document.querySelectorAll('.card.pilih').forEach((x) =>
+      x.setAttribute('aria-pressed', String(x.dataset.f === filter)));
+    gambar();
+  });
+});
+
+el('reset').addEventListener('click', () => {
+  filter = null;
+  filterKolom = {};
+  el('cari').value = '';
+  document.querySelectorAll('.card.pilih').forEach((x) => x.setAttribute('aria-pressed', 'false'));
+  perbaruiTombolFilter();
+  tutupFilter();
+  gambar();
+});
+
+el('refresh').addEventListener('click', () => muat(true));
+
+el('excel').addEventListener('click', async () => {
+  const baris = terpilih();
+  const tombol = el('excel');
+  tombol.disabled = true;
+  tombol.textContent = 'Membuat Excel…';
+
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Outstanding PIR', {
+      views: [{ state: 'frozen', ySplit: 1 }],
+    });
+    sheet.columns = [
+      { header: 'Coil', key: 'coil', width: 18 },
+      { header: 'Mother', key: 'mother', width: 15 },
+      { header: 'Customer', key: 'customer', width: 28 },
+      { header: 'Grade', key: 'grade', width: 12 },
+      { header: 'Temper', key: 'temper', width: 12 },
+      { header: 'Tebal', key: 'tebal', width: 12, style: { numFmt: '#,##0.000' } },
+      { header: 'Lebar', key: 'lebar', width: 12, style: { numFmt: '#,##0.0' } },
+      { header: 'Berat', key: 'berat', width: 14, style: { numFmt: '#,##0' } },
+      { header: 'Line', key: 'line_skrg', width: 10 },
+      { header: 'Next process', key: 'next_process', width: 22 },
+      { header: 'Lokasi', key: 'lokasi', width: 18 },
+      { header: 'Status', key: 'status', width: 12 },
+      { header: 'Asal', key: 'asal', width: 14 },
+      { header: 'Waktu', key: 'waktu', width: 20, style: { numFmt: 'yyyy-mm-dd hh:mm' } },
+    ];
+    sheet.addRows(baris.map((r) => ({
+      ...r,
+      tebal: r.tebal == null ? null : Number(r.tebal),
+      lebar: r.lebar == null ? null : Number(r.lebar),
+      berat: r.berat == null ? null : Number(r.berat),
+      asal: r.hasil_potong === 1 ? 'Potongan' : '',
+      waktu: r.waktu ? new Date(r.waktu) : null,
+    })));
+    sheet.autoFilter = { from: 'A1', to: 'N1' };
+    sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    sheet.getRow(1).fill = {
+      type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F5285' },
+    };
+
+    const isi = await workbook.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([isi], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `outstanding-pir-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (e) {
+    alert(`File Excel gagal dibuat: ${e.message}`);
+  } finally {
+    tombol.disabled = false;
+    tombol.textContent = 'Unduh Excel';
+  }
+});
+
+document.addEventListener('click', (event) => {
+  const menu = el('filter-menu');
+  if (!menu.hidden && !menu.contains(event.target)) tutupFilter();
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') tutupFilter();
+});
+window.addEventListener('resize', tutupFilter);
+
+siapkanFilterKolom();
+info();
+muat(false);
+</script>
+</body>
+</html>
