@@ -166,9 +166,7 @@ const INFO = `
 SELECT
     (SELECT COUNT(*) FROM dbo.bnm_prdp) AS total_operasi,
     (SELECT MIN(prdp_datestart) FROM dbo.bnm_prdp) AS data_dari,
-    (SELECT MAX(prdp_datestart) FROM dbo.bnm_prdp) AS data_sampai,
-    DB_NAME() AS database_aktif,
-    @@SERVERNAME AS server_aktif;
+    (SELECT MAX(prdp_datestart) FROM dbo.bnm_prdp) AS data_sampai;
 `;
 
 module.exports = { STOCK_TAKE, INFO };

@@ -37,8 +37,8 @@ investigasi yang lebih lengkap tersedia di `KONTEKS.md`.
 - Tombol **Ambil ulang dari database** untuk menghapus cache dan menjalankan
   query kembali.
 
-Tabel di browser menampilkan maksimal 2.000 baris. Ekspor Excel tetap mencakup
-seluruh baris yang sesuai dengan filter.
+Tabel di browser menampilkan 10 baris per halaman. Ringkasan dan ekspor Excel
+tetap mencakup seluruh baris yang sesuai dengan filter.
 
 ## Persyaratan
 
@@ -115,7 +115,7 @@ SQL Server harus mengizinkan SQL Server Authentication.
 
 | Endpoint | Keterangan |
 |---|---|
-| `GET /api/info` | Informasi server, database, rentang data, dan jumlah operasi |
+| `GET /api/info` | Rentang data dan jumlah operasi |
 | `GET /api/coils` | Mengambil hasil dari cache atau database |
 | `GET /api/coils?refresh=1` | Menjalankan ulang query dan memperbarui cache |
 

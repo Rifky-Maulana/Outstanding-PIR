@@ -70,14 +70,20 @@
     background: var(--surface); font: inherit; cursor: pointer;
   }
   button.act:hover { background: #f2f5f8; }
-  main { flex: 1; min-height: 0; padding: 0 24px; }
+  main { flex: 1; min-height: 0; padding: 0 24px; display: flex; flex-direction: column; }
   .wrap {
-    height: 100%;
+    flex: 1; min-height: 0;
     background: var(--surface);
     border: 1px solid var(--line);
     border-top: none;
     overflow: auto;
   }
+  .pager {
+    flex: none; display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; padding: 8px 0 10px; color: var(--muted); font-size: 13px;
+  }
+  .pager-actions { display: flex; gap: 7px; }
+  button.act:disabled { cursor: not-allowed; opacity: .55; }
   table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
   th {
     position: sticky; top: 0; background: #f4f6f9; text-align: left;
@@ -168,6 +174,13 @@
       </tbody>
     </table>
   </div>
+  <div class="pager" aria-live="polite">
+    <span id="info-halaman">0 baris</span>
+    <div class="pager-actions">
+      <button class="act" id="sebelumnya" type="button">Sebelumnya</button>
+      <button class="act" id="berikutnya" type="button">Berikutnya</button>
+    </div>
+  </div>
 </main>
 
 <div class="filter-menu" id="filter-menu" hidden></div>
@@ -175,6 +188,7 @@
 <script src="/vendor/exceljs.min.js"></script>
 <script>
 const KOLOM = 13;
+const BARIS_PER_HALAMAN = 10;
 const FILTER_KOLOM = [
   'coil', 'mother', 'customer', 'grade', 'temper', 'tebal', 'lebar',
   'berat', 'line_skrg', 'next_process', 'lokasi', 'asal', 'waktu',
@@ -183,6 +197,7 @@ const FILTER_KOLOM = [
 let semua = [];
 let filter = null;
 let filterKolom = {};
+let halaman = 1;
 
 const el = (id) => document.getElementById(id);
 const tanggal = (v) => (v ? String(v).slice(0, 16).replace('T', ' ') : '');
@@ -270,6 +285,7 @@ function bukaFilter(button) {
       .map((box) => nilai[Number(box.dataset.index)]));
     if (dipilih.size === nilai.length) delete filterKolom[key];
     else filterKolom[key] = dipilih;
+    halaman = 1;
     perbaruiTombolFilter();
     tutupFilter();
     gambar();
@@ -310,6 +326,7 @@ async function muat(refresh) {
     const j = await r.json();
     if (!j.ok) return gagal(j.error);
     semua = j.rows || [];
+    halaman = 1;
     gambar();
   } catch (e) {
     gagal(e.message);
@@ -322,7 +339,7 @@ async function info() {
     if (!j.ok) return;
     const i = j.info;
     el('meta').textContent =
-      `${i.server_aktif} · ${i.database_aktif} · ${Number(i.total_operasi).toLocaleString('id-ID')} operasi · ` +
+      `${Number(i.total_operasi).toLocaleString('id-ID')} operasi · ` +
       `data ${tanggal(i.data_dari)} sampai ${tanggal(i.data_sampai)}`;
   } catch (e) { /* biarkan teks awal */ }
 }
@@ -363,12 +380,27 @@ function gambar() {
   const baris = terpilih();
   hitung(baris);
   if (!baris.length) {
+    halaman = 1;
+    el('info-halaman').textContent = '0 baris';
+    el('sebelumnya').disabled = true;
+    el('berikutnya').disabled = true;
     el('isi').innerHTML =
       `<tr><td colspan="${KOLOM}" class="note">Tidak ada coil yang cocok. Coba ubah kata kunci atau tampilkan semua.</td></tr>`;
     return;
   }
-  const potong = baris.slice(0, 2000);
-  el('isi').innerHTML = potong.map((r) => `
+  const totalHalaman = Math.ceil(baris.length / BARIS_PER_HALAMAN);
+  halaman = Math.min(halaman, totalHalaman);
+  const mulai = (halaman - 1) * BARIS_PER_HALAMAN;
+  const selesai = Math.min(mulai + BARIS_PER_HALAMAN, baris.length);
+  const ditampilkan = baris.slice(mulai, selesai);
+
+  el('info-halaman').textContent =
+    `Halaman ${halaman.toLocaleString('id-ID')} dari ${totalHalaman.toLocaleString('id-ID')} · ` +
+    `${(mulai + 1).toLocaleString('id-ID')}–${selesai.toLocaleString('id-ID')} dari ${baris.length.toLocaleString('id-ID')} baris`;
+  el('sebelumnya').disabled = halaman === 1;
+  el('berikutnya').disabled = halaman === totalHalaman;
+
+  el('isi').innerHTML = ditampilkan.map((r) => `
     <tr>
       <td class="coil">${aman(r.coil)}</td>
       <td class="coil">${teks(r.mother)}</td>
@@ -383,17 +415,30 @@ function gambar() {
       <td>${teks(r.lokasi)}</td>
       <td>${r.hasil_potong === 1 ? '<span class="tag potong">potongan</span>' : ''}</td>
       <td>${tanggal(r.waktu)}</td>
-    </tr>`).join('') +
-    (baris.length > potong.length
-      ? `<tr><td colspan="${KOLOM}" class="note">Menampilkan 2.000 dari ${baris.length.toLocaleString('id-ID')} baris. Persempit pencarian, atau unduh Excel untuk data lengkap.</td></tr>`
-      : '');
+    </tr>`).join('');
 }
 
-el('cari').addEventListener('input', gambar);
+el('cari').addEventListener('input', () => {
+  halaman = 1;
+  gambar();
+});
+
+el('sebelumnya').addEventListener('click', () => {
+  if (halaman > 1) halaman -= 1;
+  gambar();
+  document.querySelector('.wrap').scrollTo({ top: 0 });
+});
+
+el('berikutnya').addEventListener('click', () => {
+  halaman += 1;
+  gambar();
+  document.querySelector('.wrap').scrollTo({ top: 0 });
+});
 
 document.querySelectorAll('.card.pilih').forEach((b) => {
   b.addEventListener('click', () => {
     filter = filter === b.dataset.f ? null : b.dataset.f;
+    halaman = 1;
     document.querySelectorAll('.card.pilih').forEach((x) =>
       x.setAttribute('aria-pressed', String(x.dataset.f === filter)));
     gambar();
@@ -403,6 +448,7 @@ document.querySelectorAll('.card.pilih').forEach((b) => {
 el('reset').addEventListener('click', () => {
   filter = null;
   filterKolom = {};
+  halaman = 1;
   el('cari').value = '';
   document.querySelectorAll('.card.pilih').forEach((x) => x.setAttribute('aria-pressed', 'false'));
   perbaruiTombolFilter();
