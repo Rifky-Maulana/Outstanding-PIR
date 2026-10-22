@@ -116,11 +116,6 @@
   tbody tr:hover td { background: #f7f9fb; }
   .coil { font-family: "Cascadia Mono", Consolas, monospace; font-size: 13px; }
   .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .tag {
-    display: inline-block; padding: 1px 8px; border-radius: 10px;
-    font-size: 11.5px; font-weight: 600;
-  }
-  .tag.potong { background: var(--potong-bg); color: var(--potong); }
   /* Nilai yang memang kosong di database, bukan gagal ambil. */
   .kosong { color: #a6afb9; }
   .note { padding: 40px 24px; text-align: center; color: var(--muted); }
@@ -166,11 +161,11 @@
         <tr>
           <th>Coil</th><th>Mother</th><th>Customer</th><th>Grade</th><th>Temper</th>
           <th class="num">Tebal</th><th class="num">Lebar</th><th class="num">Berat</th>
-          <th>Line</th><th>Next process</th><th>Lokasi</th><th>Asal</th><th>Waktu</th>
+          <th>Line</th><th>Next process</th><th>Lokasi</th><th>Waktu</th>
         </tr>
       </thead>
       <tbody id="isi">
-        <tr><td colspan="13" class="note">Memuat data…</td></tr>
+        <tr><td colspan="12" class="note">Memuat data…</td></tr>
       </tbody>
     </table>
   </div>
@@ -187,11 +182,11 @@
 
 <script src="/vendor/exceljs.min.js"></script>
 <script>
-const KOLOM = 13;
+const KOLOM = 12;
 const BARIS_PER_HALAMAN = 10;
 const FILTER_KOLOM = [
   'coil', 'mother', 'customer', 'grade', 'temper', 'tebal', 'lebar',
-  'berat', 'line_skrg', 'next_process', 'lokasi', 'asal', 'waktu',
+  'berat', 'line_skrg', 'next_process', 'lokasi', 'waktu',
 ];
 
 let semua = [];
@@ -218,7 +213,6 @@ const teks = (v) =>
     : aman(v);
 
 function nilaiKolom(row, key) {
-  if (key === 'asal') return row.hasil_potong === 1 ? 'Potongan' : '';
   if (key === 'waktu') return tanggal(row.waktu);
   return row[key] ?? '';
 }
@@ -413,7 +407,6 @@ function gambar() {
       <td>${teks(r.line_skrg)}</td>
       <td>${teks(r.next_process)}</td>
       <td>${teks(r.lokasi)}</td>
-      <td>${r.hasil_potong === 1 ? '<span class="tag potong">potongan</span>' : ''}</td>
       <td>${tanggal(r.waktu)}</td>
     </tr>`).join('');
 }
@@ -482,7 +475,6 @@ el('excel').addEventListener('click', async () => {
       { header: 'Next process', key: 'next_process', width: 22 },
       { header: 'Lokasi', key: 'lokasi', width: 18 },
       { header: 'Status', key: 'status', width: 12 },
-      { header: 'Asal', key: 'asal', width: 14 },
       { header: 'Waktu', key: 'waktu', width: 20, style: { numFmt: 'yyyy-mm-dd hh:mm' } },
     ];
     sheet.addRows(baris.map((r) => ({
@@ -490,10 +482,9 @@ el('excel').addEventListener('click', async () => {
       tebal: r.tebal == null ? null : Number(r.tebal),
       lebar: r.lebar == null ? null : Number(r.lebar),
       berat: r.berat == null ? null : Number(r.berat),
-      asal: r.hasil_potong === 1 ? 'Potongan' : '',
       waktu: r.waktu ? new Date(r.waktu) : null,
     })));
-    sheet.autoFilter = { from: 'A1', to: 'N1' };
+    sheet.autoFilter = { from: 'A1', to: 'M1' };
     sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
     sheet.getRow(1).fill = {
       type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F5285' },

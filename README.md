@@ -26,7 +26,7 @@ investigasi yang lebih lengkap tersedia di `KONTEKS.md`.
 ## Fitur
 
 - Menampilkan nomor coil, mother coil, grade, temper, dimensi, berat, line,
-  next process, lokasi, asal data, dan waktu operasi.
+  next process, lokasi, dan waktu operasi.
 - Pencarian berdasarkan coil, mother coil, customer, grade, temper, lokasi,
   dan next process.
 - Filter khusus coil hasil potong.
